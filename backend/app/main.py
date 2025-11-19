@@ -11,6 +11,10 @@ import numpy as np
 
 from ultralytics import YOLO
 
+
+from fastapi.middleware.cors import CORSMiddleware
+
+
 UPLOAD_DIR = os.path.abspath(os.path.join(
     os.path.dirname(__file__), "..", "uploads"))
 STATIC_DIR = os.path.abspath(os.path.join(
@@ -21,6 +25,16 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(ANNOTATED_DIR, exist_ok=True)
 
 app = FastAPI(title="YOLO Inference API")
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
