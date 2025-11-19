@@ -1,0 +1,30 @@
+# Node.js dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+
+# Environment variables
+.env*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE/editor settings
+.vscode/
+.idea/
+
+# Python virtual environment (if used)
+venv/
+
+# Optional: lock files (if you prefer not to commit them)
+# package-lock.json
+# yarn.lock
