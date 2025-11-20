@@ -1,0 +1,37 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# FastAPI static + uploads
+static/annotated/
+static/uploads/
+uploads/
+
+# YOLO model files / weights
+*.pt
+*.onnx
+*.engine
+*.trt
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Environment files
+.env
+.env.*
