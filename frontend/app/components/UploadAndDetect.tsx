@@ -1,16 +1,21 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, FormEvent } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function UploadAndDetect() {
   const { token } = useAuth();
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [annotatedUrl, setAnnotatedUrl] = useState<string | null>(null);
   const [detections, setDetections] = useState<any[]>([]);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [qaInput, setQaInput] = useState("");
+  const [qaHistory, setQaHistory] = useState<{ role: "user" | "ai"; message: string }[]>([]);
+  const [isQaLoading, setIsQaLoading] = useState(false);
+  const [qaError, setQaError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadImage = async () => {
@@ -21,7 +26,6 @@ export default function UploadAndDetect() {
       const formData = new FormData();
       formData.append("file", image);
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const res = await fetch(`${API_URL}/api/images/upload`, {
         method: "POST",
         headers: {
@@ -36,6 +40,9 @@ export default function UploadAndDetect() {
       const data = await res.json();
       setAnnotatedUrl(`${API_URL}${data.annotated_url}`);
       setDetections(data.detections);
+      setQaHistory([]);
+      setQaInput("");
+      setQaError(null);
     } catch (error) {
       console.error("Error uploading image:", error);
     } finally {
@@ -76,6 +83,9 @@ export default function UploadAndDetect() {
     // Clear previous results when selecting a new image
     setAnnotatedUrl(null);
     setDetections([]);
+    setQaHistory([]);
+    setQaInput("");
+    setQaError(null);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -91,6 +101,53 @@ export default function UploadAndDetect() {
   };
 
   const confidencePercentage = (conf: number) => Math.round(conf * 100);
+
+  const askAboutResults = async () => {
+    const question = qaInput.trim();
+    if (!question || detections.length === 0) return;
+
+    const previousHistory = [...qaHistory];
+    setQaHistory((prev) => [...prev, { role: "user", message: question }]);
+    setQaInput("");
+    setQaError(null);
+    setIsQaLoading(true);
+
+    try {
+      const res = await fetch(`${API_URL}/api/results/qa`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          question,
+          detections,
+          history: previousHistory,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch Gemini response");
+      }
+
+      const data = await res.json();
+      setQaHistory((prev) => [...prev, { role: "ai", message: data.answer || "No response." }]);
+    } catch (error) {
+      console.error("Error contacting Q&A endpoint:", error);
+      setQaError("Unable to get a response right now. Please try again.");
+      setQaHistory((prev) => [
+        ...prev,
+        { role: "ai", message: "Sorry, I couldn't process that question." },
+      ]);
+    } finally {
+      setIsQaLoading(false);
+    }
+  };
+
+  const handleQaSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    askAboutResults();
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
@@ -183,140 +240,219 @@ export default function UploadAndDetect() {
 
       {/* Results Section */}
       {(annotatedUrl || detections.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Annotated Image Section */}
-          {annotatedUrl && (
-            <div className="bg-white border rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">Annotated Image</h2>
-                {detections.length > 0 && (
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                    {detections.length} Objects
-                  </span>
-                )}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Annotated Image Section */}
+            {annotatedUrl && (
+              <div className="bg-white border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Annotated Image</h2>
+                  {detections.length > 0 && (
+                    <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                      {detections.length} Objects
+                    </span>
+                  )}
+                </div>
+                <div className="bg-gray-50 rounded border p-4 flex items-center justify-center min-h-[300px]">
+                  <img
+                    src={annotatedUrl}
+                    alt="Annotated"
+                    className="max-w-full max-h-[500px] rounded"
+                  />
+                </div>
               </div>
-              <div className="bg-gray-50 rounded border p-4 flex items-center justify-center min-h-[300px]">
-                <img
-                  src={annotatedUrl}
-                  alt="Annotated"
-                  className="max-w-full max-h-[500px] rounded"
-                />
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Detection Results Section */}
+            {/* Detection Results Section */}
+            {detections.length > 0 && (
+              <div className="bg-white border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Detection Results</h2>
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                    Sortable
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-gray-50 border-b-2 border-gray-200">
+                      <tr>
+                        <th
+                          className="p-3 cursor-pointer hover:bg-gray-100 transition-colors font-semibold text-gray-700"
+                          onClick={() => sortTable("class_name")}
+                        >
+                          <div className="flex items-center gap-2">
+                            OBJECT
+                            <svg
+                              className="w-4 h-4 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          </div>
+                        </th>
+                        <th
+                          className="p-3 cursor-pointer hover:bg-gray-100 transition-colors font-semibold text-gray-700"
+                          onClick={() => sortTable("confidence")}
+                        >
+                          <div className="flex items-center gap-2">
+                            CONFIDENCE
+                            <svg
+                              className="w-4 h-4 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          </div>
+                        </th>
+                        <th
+                          className="p-3 cursor-pointer hover:bg-gray-100 transition-colors font-semibold text-gray-700"
+                          onClick={() =>
+                            sortTable("bbox", (det) => {
+                              if (!Array.isArray(det.bbox) || det.bbox.length < 4) return 0;
+                              const [x1, y1, x2, y2] = det.bbox;
+                              const width = Math.max(0, x2 - x1);
+                              const height = Math.max(0, y2 - y1);
+                              return width * height;
+                            })
+                          }
+                        >
+                          <div className="flex items-center gap-2">
+                            BOUNDING BOX
+                            <svg
+                              className="w-4 h-4 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detections.map((det, i) => (
+                        <tr key={i} className="border-b hover:bg-gray-50 transition-colors">
+                          <td className="p-3 font-medium text-gray-900">{det.class_name}</td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 bg-gray-200 rounded-full h-6 min-w-[100px]">
+                                <div
+                                  className="bg-green-500 h-6 rounded-full flex items-center justify-end pr-2"
+                                  style={{ width: `${confidencePercentage(det.confidence)}%` }}
+                                >
+                                  <span className="text-xs font-medium text-white">
+                                    {confidencePercentage(det.confidence)}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 text-gray-600 font-mono text-sm">
+                            ({det.bbox.map((v: number) => v.toFixed(0)).join(", ")})
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Conversational Q&A */}
           {detections.length > 0 && (
             <div className="bg-white border rounded-lg p-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">Detection Results</h2>
-                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                  Sortable
+                <div>
+                  <h2 className="text-xl font-semibold">Ask Questions About Results</h2>
+                  <p className="text-sm text-gray-500">Powered by Gemini 2.5 Flash</p>
+                </div>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    isQaLoading ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"
+                  }`}
+                >
+                  {isQaLoading ? "Thinking..." : "Ready"}
                 </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-gray-50 border-b-2 border-gray-200">
-                    <tr>
-                      <th
-                        className="p-3 cursor-pointer hover:bg-gray-100 transition-colors font-semibold text-gray-700"
-                        onClick={() => sortTable("class_name")}
+
+              <div className="bg-gray-50 border rounded-lg p-4 h-64 overflow-y-auto space-y-3">
+                {qaHistory.length === 0 && !isQaLoading ? (
+                  <p className="text-gray-500 text-sm">
+                    
+                  </p>
+                ) : (
+                  qaHistory.map((entry, idx) => (
+                    <div
+                      key={`${entry.role}-${idx}`}
+                      className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
+                          entry.role === "user"
+                            ? "bg-blue-600 text-white rounded-br-none"
+                            : "bg-white border text-gray-800 rounded-bl-none"
+                        }`}
                       >
-                        <div className="flex items-center gap-2">
-                          OBJECT
-                          <svg
-                            className="w-4 h-4 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        </div>
-                      </th>
-                      <th
-                        className="p-3 cursor-pointer hover:bg-gray-100 transition-colors font-semibold text-gray-700"
-                        onClick={() => sortTable("confidence")}
-                      >
-                        <div className="flex items-center gap-2">
-                          CONFIDENCE
-                          <svg
-                            className="w-4 h-4 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        </div>
-                      </th>
-                      <th
-                        className="p-3 cursor-pointer hover:bg-gray-100 transition-colors font-semibold text-gray-700"
-                        onClick={() =>
-                          sortTable("bbox", (det) => {
-                            if (!Array.isArray(det.bbox) || det.bbox.length < 4) return 0;
-                            const [x1, y1, x2, y2] = det.bbox;
-                            const width = Math.max(0, x2 - x1);
-                            const height = Math.max(0, y2 - y1);
-                            return width * height;
-                          })
-                        }
-                      >
-                        <div className="flex items-center gap-2">
-                          BOUNDING BOX
-                          <svg
-                            className="w-4 h-4 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        </div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detections.map((det, i) => (
-                      <tr key={i} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="p-3 font-medium text-gray-900">{det.class_name}</td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 bg-gray-200 rounded-full h-6 min-w-[100px]">
-                              <div
-                                className="bg-green-500 h-6 rounded-full flex items-center justify-end pr-2"
-                                style={{ width: `${confidencePercentage(det.confidence)}%` }}
-                              >
-                                <span className="text-xs font-medium text-white">
-                                  {confidencePercentage(det.confidence)}%
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-3 text-gray-600 font-mono text-sm">
-                          ({det.bbox.map((v: number) => v.toFixed(0)).join(", ")})
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        <p className="font-semibold mb-1 text-xs uppercase tracking-wide">
+                          {entry.role === "user" ? "You" : "Gemini"}
+                        </p>
+                        <p>{entry.message}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isQaLoading && (
+                  <div className="text-gray-500 text-sm">Gemini is analyzing your question...</div>
+                )}
               </div>
+
+              {qaError && <p className="text-sm text-red-600 mt-3">{qaError}</p>}
+
+              <form onSubmit={handleQaSubmit} className="mt-4 flex flex-col gap-3">
+                <textarea
+                  value={qaInput}
+                  onChange={(e) => setQaInput(e.target.value)}
+                  placeholder="Ask a question about the detected objects..."
+                  className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={2}
+                  disabled={isQaLoading}
+                />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={isQaLoading || !qaInput.trim()}
+                    className={`px-6 py-2 rounded-md font-semibold text-white transition-colors ${
+                      isQaLoading || !qaInput.trim()
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-purple-600 hover:bg-purple-700"
+                    }`}
+                  >
+                    {isQaLoading ? "Sending..." : "Ask Gemini"}
+                  </button>
+                  
+                </div>
+              </form>
             </div>
           )}
         </div>
