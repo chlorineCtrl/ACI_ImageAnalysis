@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function UploadAndDetect() {
+  const { token } = useAuth();
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [annotatedUrl, setAnnotatedUrl] = useState<string | null>(null);
@@ -19,13 +21,20 @@ export default function UploadAndDetect() {
       const formData = new FormData();
       formData.append("file", image);
 
-      const res = await fetch("http://localhost:8000/api/images/upload", {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${API_URL}/api/images/upload`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 
+      if (!res.ok) {
+        throw new Error("Upload failed");
+      }
       const data = await res.json();
-      setAnnotatedUrl(`http://localhost:8000${data.annotated_url}`);
+      setAnnotatedUrl(`${API_URL}${data.annotated_url}`);
       setDetections(data.detections);
     } catch (error) {
       console.error("Error uploading image:", error);

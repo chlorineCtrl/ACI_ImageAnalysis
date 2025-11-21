@@ -1,5 +1,10 @@
 import UploadAndDetect from "../components/UploadAndDetect";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 export default function Page() {
-  return <UploadAndDetect />;
+  return (
+    <ProtectedRoute>
+      <UploadAndDetect />
+    </ProtectedRoute>
+  );
 }

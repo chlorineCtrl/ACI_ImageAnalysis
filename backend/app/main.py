@@ -2,7 +2,7 @@ import os
 import uuid
 from typing import List, Dict, Any
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -11,8 +11,10 @@ import numpy as np
 
 from ultralytics import YOLO
 
-
 from fastapi.middleware.cors import CORSMiddleware
+from .auth_routes import router as auth_router
+from .auth import get_current_user
+from .database import User
 
 
 UPLOAD_DIR = os.path.abspath(os.path.join(
@@ -26,7 +28,6 @@ os.makedirs(ANNOTATED_DIR, exist_ok=True)
 
 app = FastAPI(title="YOLO Inference API")
 
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -34,6 +35,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include auth routes
+app.include_router(auth_router)
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -81,7 +85,10 @@ def results_to_detections(results) -> List[Dict[str, Any]]:
 
 
 @app.post("/api/images/upload")
-async def upload_and_detect(file: UploadFile = File(...)):
+async def upload_and_detect(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
     """
     Receives an image file via multipart/form-data, runs YOLO inference,
     saves annotated image under static/annotated and returns structured detections.
