@@ -1,0 +1,58 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+app.db
+
+# Uploads and static files
+backend/uploads/*
+backend/static/annotated/*
+backend/static/uploads/*
+!backend/uploads/.gitkeep
+!backend/static/annotated/.gitkeep
+!backend/static/uploads/.gitkeep
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+docker-compose.override.yml
+
+

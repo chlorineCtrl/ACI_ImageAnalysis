@@ -72,6 +72,9 @@ else:
     print("[WARN] GEMINI_API_KEY not set. Q&A endpoint will be disabled.")
 
 
+
+
+
 def results_to_detections(results) -> List[Dict[str, Any]]:
     """
     Convert ultralytics detection result -> list of {class_name, bbox, confidence}
