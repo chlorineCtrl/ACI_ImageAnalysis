@@ -43,7 +43,7 @@ export default function UploadAndDetect() {
     }
   };
 
-  const sortTable = (key: string) => {
+  const sortTable = (key: string, accessor?: (det: any) => number | string) => {
     let direction: "asc" | "desc" = "asc";
 
     if (sortConfig?.key === key && sortConfig.direction === "asc") {
@@ -51,8 +51,10 @@ export default function UploadAndDetect() {
     }
 
     const sorted = [...detections].sort((a, b) => {
-      if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
-      if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
+      const aValue = accessor ? accessor(a) : a[key];
+      const bValue = accessor ? accessor(b) : b[key];
+      if (aValue < bValue) return direction === "asc" ? -1 : 1;
+      if (aValue > bValue) return direction === "asc" ? 1 : -1;
       return 0;
     });
 
@@ -258,7 +260,18 @@ export default function UploadAndDetect() {
                           </svg>
                         </div>
                       </th>
-                      <th className="p-3 font-semibold text-gray-700">
+                      <th
+                        className="p-3 cursor-pointer hover:bg-gray-100 transition-colors font-semibold text-gray-700"
+                        onClick={() =>
+                          sortTable("bbox", (det) => {
+                            if (!Array.isArray(det.bbox) || det.bbox.length < 4) return 0;
+                            const [x1, y1, x2, y2] = det.bbox;
+                            const width = Math.max(0, x2 - x1);
+                            const height = Math.max(0, y2 - y1);
+                            return width * height;
+                          })
+                        }
+                      >
                         <div className="flex items-center gap-2">
                           BOUNDING BOX
                           <svg
