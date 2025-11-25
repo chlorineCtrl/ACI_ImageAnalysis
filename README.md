@@ -22,8 +22,8 @@ A full-stack AI web application where users can log in, upload images, run objec
    
    Then edit `.env` and add your API keys:
    ```env
-   SECRET_KEY=your-long-random-secret-key-here
-   GEMINI_API_KEY=your-gemini-api-key-here
+   
+   GEMINI_API_KEY="AIzaSyCdnAAOdGYh__4igC--LVCn03Gqwdq7b7A"
    ```
 
 3. **Start the application:**
