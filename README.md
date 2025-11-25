@@ -23,7 +23,14 @@ A full-stack AI web application where users can log in, upload images, run objec
    Then edit `.env` and add your API keys:
    ```env
    
-   GEMINI_API_KEY="AIzaSyCdnAAOdGYh__4igC--LVCn03Gqwdq7b7A"
+   # Backend configuration
+GEMINI_API_KEY="AIzaSyCdnAAOdGYh__4igC--LVCn03Gqwdq7b7A"
+GEMINI_MODEL_NAME=gemini-2.5-flash
+FRONTEND_URL=http://localhost:3000
+
+# Frontend configuration
+NEXT_PUBLIC_API_URL=http://localhost:8000
+
    ```
 
 3. **Start the application:**
