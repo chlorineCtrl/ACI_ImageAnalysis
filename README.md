@@ -36,13 +36,12 @@ A full-stack AI web application where users can log in, upload images, run objec
    - Backend API: http://localhost:8000
    - API Docs: http://localhost:8000/docs
 
-That's it! The application is now running with all services containerized.
+
 
 ## ✨ Features
 
 - **User Authentication**
   - Email/password signup and login
-  - Google OAuth integration (optional)
   - JWT-based session management
 
 - **Image Upload & Processing**
@@ -126,17 +125,12 @@ Create a `.env` file in the project root:
 
 ```env
 # Required
-SECRET_KEY=your-secret-key-change-this-in-production
-GEMINI_API_KEY=your-gemini-api-key
+GEMINI_API_KEY="AIzaSyCdnAAOdGYh__4igC--LVCn03Gqwdq7b7A"
 
 # Optional
 GEMINI_MODEL_NAME=gemini-2.5-flash
 FRONTEND_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:8000
-
-# Google OAuth (Optional)
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
 ```
 
 ### API Keys
@@ -158,7 +152,7 @@ GOOGLE_CLIENT_SECRET=
 
 ### 1. Sign Up / Login
 - Create an account with email and password
-- Or use Google Sign-In (if configured)
+
 
 ### 2. Upload Image
 - Drag and drop an image or click to browse
@@ -226,30 +220,7 @@ docker compose logs -f
 docker compose down -v
 ```
 
-## 🐛 Troubleshooting
 
-### Port Already in Use
-If ports 3000 or 8000 are occupied, modify `docker-compose.yml`:
-```yaml
-ports:
-  - "3001:3000"  # Change first number to available port
-```
-
-### YOLO Model Not Loading
-- Ensure `backend/app/yolov8n.pt` exists
-- Check Docker build logs for errors
-- Model downloads automatically on first run
-
-### Frontend Can't Connect to Backend
-- Verify `NEXT_PUBLIC_API_URL` in `.env`
-- Check if backend is running: `docker compose ps`
-- View backend logs: `docker compose logs backend`
-
-### Database Reset
-```bash
-docker compose down -v
-docker compose up
-```
 
 ## 📝 API Documentation
 
@@ -263,25 +234,6 @@ Once running, visit http://localhost:8000/docs for interactive API documentation
 - `POST /api/images/upload` - Upload image and run detection
 - `POST /api/results/qa` - Ask questions about detections
 
-## 🔒 Security Notes
-
-- Change `SECRET_KEY` in production
-- Use HTTPS in production
-- Don't commit `.env` file
-- Rotate API keys regularly
-- Consider rate limiting for production
-
-## 📄 License
-
-This project is for educational purposes.
-
-## 🤝 Contributing
-
-Contributions welcome! Please feel free to submit a Pull Request.
-
-## 📧 Support
-
-For detailed Docker setup instructions, see [DOCKER_README.md](DOCKER_README.md).
 
 ---
 
